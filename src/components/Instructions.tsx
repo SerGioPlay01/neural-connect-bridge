@@ -1,6 +1,7 @@
 
 import React from 'react';
-import { BookOpen, Key, MessageSquare, Settings } from 'lucide-react';
+import { BookOpen, Key, MessageSquare, Settings, Zap } from 'lucide-react';
+import { MAX_FREE_REQUESTS } from '../utils/freeTierService';
 
 const Instructions: React.FC = () => {
   return (
@@ -15,12 +16,34 @@ const Instructions: React.FC = () => {
       <div className="space-y-10">
         <section className="glass-panel p-6 animate-fade-in">
           <div className="flex items-center mb-4">
+            <Zap className="w-5 h-5 mr-2 text-primary" />
+            <h2 className="text-xl font-semibold">Try for Free</h2>
+          </div>
+          <div className="space-y-4">
+            <p>
+              NeuralHub offers {MAX_FREE_REQUESTS} free requests to try the service without adding your own API keys:
+            </p>
+            <ul className="list-disc list-inside space-y-2 ml-2">
+              <li>Access all supported AI models without an API key</li>
+              <li>Perfect for testing before adding your own keys</li>
+              <li>Simply start chatting - no setup required</li>
+            </ul>
+            <div className="bg-green-100 dark:bg-green-900 p-4 rounded-md mt-2">
+              <p className="text-sm text-green-800 dark:text-green-100">
+                <strong>Free Tier:</strong> Use up to {MAX_FREE_REQUESTS} messages with our demo API keys. After that, you'll need to add your own API keys to continue.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section className="glass-panel p-6 animate-fade-in">
+          <div className="flex items-center mb-4">
             <Key className="w-5 h-5 mr-2 text-primary" />
             <h2 className="text-xl font-semibold">Setting Up API Keys</h2>
           </div>
           <div className="space-y-4">
             <p>
-              To use NeuralHub, you'll need to add your own API keys for the AI services you want to use:
+              To use NeuralHub long-term, you'll need to add your own API keys for the AI services you want to use:
             </p>
             <ol className="list-decimal list-inside space-y-2 ml-2">
               <li>Go to the <strong>Settings</strong> page</li>

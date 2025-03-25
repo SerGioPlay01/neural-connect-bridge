@@ -2,6 +2,13 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { useApiKeys } from './ApiKeyContext';
+import { 
+  getFreeTierApiKey, 
+  hasFreeTierRequestsRemaining, 
+  incrementFreeTierUsage, 
+  getFreeTierUsage,
+  MAX_FREE_REQUESTS
+} from '../utils/freeTierService';
 
 // Define message types
 type MessageRole = 'user' | 'assistant' | 'system';
@@ -37,6 +44,8 @@ interface ChatContextType {
   setCurrentModel: (model: string) => void;
   clearConversations: () => void;
   availableModels: { id: string, name: string, service: string }[];
+  freeTierUsage: number;
+  hasFreeTierRemaining: boolean;
 }
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
@@ -54,6 +63,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [currentModel, setCurrentModel] = useState('openai:gpt-4o');
   const [isLoading, setIsLoading] = useState(false);
+  const [freeTierUsage, setFreeTierUsage] = useState(getFreeTierUsage);
   const { getApiKey } = useApiKeys();
 
   const availableModels = [
@@ -72,6 +82,9 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const currentConversation = currentConversationId 
     ? conversations.find(conv => conv.id === currentConversationId) || null 
     : null;
+
+  // Calculate if free tier requests are remaining
+  const hasFreeTierRemaining = hasFreeTierRequestsRemaining();
 
   // Load conversations from localStorage on mount
   useEffect(() => {
@@ -177,10 +190,19 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     // Get the model service from the model ID
     const [service] = currentModel.split(':');
-    const apiKey = getApiKey(service);
+    const userApiKey = getApiKey(service);
     
-    if (!apiKey) {
-      toast.error(`No API key found for ${service}. Please add your API key in Settings.`);
+    // Determine which API key to use - user's key or free tier
+    let apiKey = userApiKey;
+    let usingFreeTier = false;
+    
+    if (!userApiKey && hasFreeTierRemaining) {
+      // No user API key but free tier is available
+      apiKey = getFreeTierApiKey(service);
+      usingFreeTier = true;
+    } else if (!userApiKey) {
+      // No user API key and no free tier remaining
+      toast.error(`No API key found for ${service}. Please add your API key in Settings or use a different model.`);
       return;
     }
     
@@ -191,8 +213,24 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // to the appropriate AI service based on the model selection
       await new Promise(resolve => setTimeout(resolve, 1000));
       
+      // If using free tier, increment usage
+      if (usingFreeTier) {
+        const newUsage = incrementFreeTierUsage();
+        setFreeTierUsage(newUsage);
+        
+        if (newUsage >= MAX_FREE_REQUESTS) {
+          toast.info(`You've used all ${MAX_FREE_REQUESTS} free requests. Please add your API key in Settings to continue.`);
+        } else {
+          toast.info(`Using free tier (${newUsage}/${MAX_FREE_REQUESTS} requests used)`);
+        }
+      }
+      
       // Simulate different responses based on the selected model
       let response = `This is a simulated response from the ${currentModel} model.`;
+      
+      if (usingFreeTier) {
+        response += ' (Using free tier API key)';
+      }
       
       if (content.includes('?')) {
         response += ' I noticed you asked a question. In a real implementation, I would process this through the selected AI service API.';
@@ -250,7 +288,9 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       deleteConversation,
       setCurrentModel,
       clearConversations,
-      availableModels
+      availableModels,
+      freeTierUsage,
+      hasFreeTierRemaining
     }}>
       {children}
     </ChatContext.Provider>
